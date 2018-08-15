@@ -70,4 +70,33 @@ for device in device_type:
                       "offer_details": ofr_details}
         promo_master.append(promo_json)
 
-print(promo_master)
+# print(promo_master)
+
+# write json to file
+with open('promo_data.json', 'w') as outfile:
+    json.dump(promo_master, outfile)
+
+f = open('promo_data.json')
+data = json.load(f)
+f.close()
+
+f = csv.writer(open('promo_extract.csv', 'w+'))
+
+# add header
+f.writerow(['DEVICE'
+               , 'OFFER_BANNER'
+               , 'OFFER_URL'
+               , 'OFFER_CODE'
+               , 'OFFER_DETAILS'
+            ])
+
+# add content
+for item in data:
+    f.writerow([item['device']
+                   , item['offer_banner']
+                   , item['offer_url']
+                   , item['offer_code']
+                   , item['offer_details']]
+               )
+
+# file produced at local

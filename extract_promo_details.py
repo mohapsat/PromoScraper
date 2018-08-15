@@ -9,13 +9,13 @@ soup = BeautifulSoup(page.text, 'html.parser')
 
 promo_codes = []
 
-headlines = soup.find_all('div', attrs={'class':'headline'})
+headlines = soup.find_all('div', attrs={'class': 'headline'})
 
 promo_descriptions = []
 
-for promoTxt in soup.find_all('div',attrs={'class':'promoTxt'}):
+for promoTxt in soup.find_all('div', attrs={'class': 'promoTxt'}):
     promo_cd = promoTxt.find('span')
-    if promo_cd is None: # handle null promo codes
+    if promo_cd is None:  # handle null promo codes
         # promo_cd.text = 'Not Provided'
         # promo_codes_list.append(promo_cd.text)
         continue
@@ -29,8 +29,7 @@ for promoTxt in soup.find_all('div',attrs={'class':'promoTxt'}):
     else:
         promo_descriptions.append(description.text)
 
-
-discalimers = soup.find_all('div', attrs={'class':'disclaimer'})
+disclaimers = soup.find_all('div', attrs={'class': 'disclaimer'})
 
 
 final_json_tmp = {}
@@ -39,11 +38,11 @@ final_json = []
 for promo_code in promo_codes:
     for headline in headlines:
         for description in promo_descriptions:
-            for disclaimer in discalimers:
-                final_json_tmp.update({ "promo_code": promo_code
-                                      ,"headline": headline.text
-                                      ,"description": description
-                                      ,"disclaimer": disclaimer.text})
+            for disclaimer in disclaimers:
+                final_json_tmp.update({"promo_code": promo_code
+                                          , "headline": headline.text
+                                          , "description": description
+                                          , "disclaimer": disclaimer.text})
                 final_json.append(final_json_tmp.copy())
 
 
@@ -56,15 +55,19 @@ f = open('promo_data.json')
 data = json.load(f)
 f.close()
 
-f = csv.writer(open('promo_extract.csv','w+'))
+f = csv.writer(open('promo_extract.csv', 'w+'))
 
 # add header
 f.writerow(['PROMO_CODE'
-               ,'HEADLINE'
-               ,'DESCRIPTION'
-               ,'DISCLAIMER'
+               , 'HEADLINE'
+               , 'DESCRIPTION'
+               , 'DISCLAIMER'
             ])
 
 # add content
 for item in data:
-    f.writerow([item['promo_code'],item['headline'],item['description'],item['disclaimer']])
+    f.writerow([item['promo_code']
+                   , item['headline']
+                   , item['description']
+                   , item['disclaimer']]
+               )
