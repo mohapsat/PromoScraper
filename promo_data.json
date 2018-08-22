@@ -1,1 +1,38 @@
-[{"device": "desktop", "offer_banner": 1, "offer_url": "https://www.shutterfly.com/promotions_details/#economy", "offer_code": "SHIP39", "offer_details": "FREE SHIPPING"}, {"device": "desktop", "offer_banner": 2, "offer_url": "https://www.shutterfly.com/special-offers", "offer_code": "SUMMERTIME", "offer_details": "50% OFF HARDCOVER BOOKS, GIFTS, & HOME DECOR + 40% ALL ELSE* "}, {"device": "mobile", "offer_banner": 1, "offer_url": "https://www.shutterfly.com/special-offers", "offer_code": "SHIP39", "offer_details": "Free shipping on $39+"}]
+[
+  {
+    "device": "desktop",
+    "promo_location": "desktop-offer-banner-1",
+    "promo_banner": 1,
+    "promo_code": "SHIP39",
+    "promo_details": "FREE SHIPPING",
+    "promo_start": "20-AUG-2018",
+    "promo_end": "21-AUG-2018",
+    "promo_url": "https://www.shutterfly.com/promotions_details/#economy",
+    "promo_terms": "really long text",
+    "promo_template": "MASTER_TEMPLATE_001"
+  },
+  {
+    "device": "desktop",
+    "promo_location": "desktop-offer-banner-2",
+    "promo_banner": 2,
+    "promo_code": "SUMMERTIME",
+    "promo_details": "50% OFF HARDCOVER BOOKS, GIFTS, & HOME DECOR + 40% ALL ELSE* ",
+    "promo_start": "22-AUG-2018",
+    "promo_end": "22-AUG-2018",
+    "promo_url": "https://www.shutterfly.com/promotions_details/#economy",
+    "promo_terms": "long long text",
+    "promo_template": "MASTER_TEMPLATE_002"
+  },
+  {
+    "device": "mobile",
+    "promo_location": "mobile-offer-banner-1",
+    "promo_banner": 1,
+    "promo_code": "SHIP39",
+    "promo_details": "Free shipping on $39+",
+    "promo_start": "",
+    "promo_end": "",
+    "promo_url": "https://www.shutterfly.com/special-offers",
+    "promo_terms": "",
+    "promo_template": ""
+  }
+]

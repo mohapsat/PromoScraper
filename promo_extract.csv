@@ -1,4 +1,4 @@
-DEVICE,OFFER_BANNER,OFFER_URL,OFFER_CODE,OFFER_DETAILS
-desktop,1,https://www.shutterfly.com/promotions_details/#economy,SHIP39,FREE SHIPPING
-desktop,2,https://www.shutterfly.com/special-offers,SUMMERTIME,"50% OFF HARDCOVER BOOKS, GIFTS, & HOME DECOR + 40% ALL ELSE* "
-mobile,1,https://www.shutterfly.com/special-offers,SHIP39,Free shipping on $39+
+DEVICE,PROMO_LOCATION,PROMO_BANNER,PROMO_CODE,PROMO_DETAILS,PROMO_START,PROMO_END,PROMO_DETAILS_URL,PROMO_TERMS,PROMO_TEMPLATE
+desktop,desktop-offer-banner-1,1,SHIP39,FREE SHIPPING,20-AUG-2018,21-AUG-2018,https://www.shutterfly.com/promotions_details/#economy,really long text,MASTER_TEMPLATE_001
+desktop,desktop-offer-banner-2,2,SUMMERTIME,"50% OFF HARDCOVER BOOKS, GIFTS, & HOME DECOR + 40% ALL ELSE* ",22-AUG-2018,22-AUG-2018,https://www.shutterfly.com/promotions_details/#economy,long long text,MASTER_TEMPLATE_002
+mobile,mobile-offer-banner-1,1,SHIP39,Free shipping on $39+,,,https://www.shutterfly.com/special-offers,,

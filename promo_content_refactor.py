@@ -1,18 +1,22 @@
 import requests
 import csv
 import json
+import teradata
 from bs4 import BeautifulSoup as BS
 
-doc = "promo_html.html"
-soup = BS(open(doc), 'html.parser')  # static file
+# doc = "promo_html.html"
+# soup = BS(open(doc), 'html.parser')  # static file
+
+stage_url = "https://www.stage.shutterfly.com/"
+response = requests.get(stage_url)
+soup = BS(response.text, 'html.parser')
 
 # print(soup.prettify())
 '''
 [
-    {"device": "desktop", "offer_banner": 1, "offer_url": "", "description":"", "offer_code": "SHIP39"},
-    {"device": "desktop", "offer_banner": 2, "offer_url": "", "description":"", "offer_code": "SHIP40"},
-    {"device": "mobile", "offer_banner": 1, "offer_url": "", "description":"", "offer_code": "SHIP39"},
-    {"device": "mobile", "offer_banner": 2, "offer_url": "", "description":"", "offer_code": "SHIP40"}
+  {'device': 'desktop', 'promo_location': 'desktop-offer-banner-1', 'offer_banner': 1, 'offer_code': 'SHIP39', 'offer_details': 'FREE SHIPPING', 'promo_start': '20-AUG-2018', 'promo_end': '21-AUG-2018', 'offer_url': 'https://www.shutterfly.com/promotions_details/#economy', 'offer_terms': 'really long text', 'offer_template': 'MASTER_TEMPLATE_001'},
+  {'device': 'desktop', 'promo_location': 'desktop-offer-banner-2', 'offer_banner': 2, 'offer_code': 'SUMMERTIME', 'offer_details': '50% OFF HARDCOVER BOOKS, GIFTS, & HOME DECOR + 40% ALL ELSE* ', 'promo_start': '22-AUG-2018', 'promo_end': '22-AUG-2018', 'offer_url': 'https://www.shutterfly.com/promotions_details/#economy', 'offer_terms': 'long long text', 'offer_template': 'MASTER_TEMPLATE_002'}, 
+  {'device': 'mobile', 'promo_location': 'mobile-offer-banner-1', 'offer_banner': 1, 'offer_code': 'SHIP39', 'offer_details': 'Free shipping on $39+', 'promo_start': '', 'promo_end': '', 'offer_url': 'https://www.shutterfly.com/special-offers', 'offer_terms': '', 'offer_template': ''}
 ]
 '''
 
@@ -22,11 +26,20 @@ device_type = ['desktop', 'mobile']  # desktop or mobile banner
 # chang to device_type
 # fetch available banner ids and load to list
 banner_ids = list()
+data = list()
+data_tup = tuple()
 
 for device in device_type:
 
-    # print("promo = %s" % promo)
+    # clear out contents
     banner_ids.clear()  # clear list before picking next promo type
+    ofr_template = ''
+    ofr_terms = ''
+    ofr_exp = ''
+    ofr_start = ''
+    ofr_code = ''
+    ofr_details = ''
+    ofr_url = ''
 
     for tag in soup.find_all(class_=str(device) + '-offer-banner'):
         # print("id = %s" % tag.get('id'))
@@ -58,20 +71,68 @@ for device in device_type:
             # promo_json.append(offer_details.text)
             pass
 
-        for offer_code in soup.find_all('span', attrs={'id': str(device) + "-offer-code-" + str(x + 1)}):
-            ofr_code = offer_code.text.strip('Code :').strip('code :')
-            # print(str(device) + " offer code " + str(x + 1) + ": %s" % offer_code.text.strip('Code :').strip('code :'))
-            # print(str(item)+" "+offer_code.text.strip('Code :').strip('code :'))
-            # promo_json.append(offer_code.text.strip('Code: '))
-            pass
+        for offer_code in soup.find_all('span',
+                                        attrs={'id': str(device) + "-offer-code-" + str(x + 1), 'class': 'hidden'}):
+            ofr_code = offer_code.text
+            # print("offer code: %s" % ofr_code)
+
+        for offer_start in soup.find_all('span', attrs={'id': str(device) + "-offer-start-" + str(x + 1)}):
+            ofr_start = offer_start.text
+            # print("offer start: %s" % ofr_start)
+
+        for offer_exp in soup.find_all('span', attrs={'id': str(device) + "-offer-expiration-" + str(x + 1)}):
+            ofr_exp = offer_exp.text
+            # print("offer expiration: %s" % ofr_exp)
+
+        for offer_terms in soup.find_all('span', attrs={'id': str(device) + "-offer-terms-" + str(x + 1)}):
+            ofr_terms = offer_terms.text
+            # print("offer terms = %s" % ofr_terms)
+
+        for offer_template in soup.find_all('span', attrs={'id': str(device) + "-offer-template-" + str(x + 1)}):
+            ofr_template = offer_template.text
+
+            # print("offer template = %s" % ofr_template)
+
             # print("---------------------\n")
 
-        promo_json = {"device": device, "offer_banner": ofr_banner, "offer_url": ofr_url, "offer_code": ofr_code,
-                      "offer_details": ofr_details}
-        promo_master.append(promo_json)
+        # promo_json = {"device": device, "promo_location": item, "promo_banner": ofr_banner, "promo_code": ofr_code,
+        #               "promo_details": ofr_details, "promo_start": ofr_start, "promo_end": ofr_exp, "promo_url": ofr_url,
+        #               "promo_terms": ofr_terms, "promo_template": ofr_template}
+        # promo_master.append(promo_json)
+
+        data_part = (device, item, ofr_banner, ofr_code, ofr_details,
+                     ofr_start, ofr_exp, ofr_url, ofr_terms, ofr_template)
+        data.append(data_part)
+        data_tup = tuple(data)
+# print(data_tup)
+
 
 # print(promo_master)
 
+# Prep teradata insert
+
+# insert_data = data_tup
+dsn = 'TDDB'
+udaExec = teradata.UdaExec(appName="tdPyInterface", version="1.0",
+                           logConsole=False, appConfigFile="tdPyInterface.ini")
+session = udaExec.connect(dsn)
+
+# drop_qry = "delete CRMP.CRIPT_PROMO_MASTER"
+# cursor = session.execute(drop_qry)
+
+# SAMPLE
+# create table crmp.cript_promo_master (
+# DEVICE varchar(32), PROMO_LOCATION varchar(64), PROMO_BANNER integer, PROMO_CODE varchar(128), PROMO_DETAILS varchar(4000),
+# PROMO_START varchar(32), PROMO_END varchar(32), PROMO_DETAILS_URL varchar(1024), PROMO_TERMS varchar(4000), PROMO_TEMPLATE varchar(512)
+# );
+
+insert_qry = """INSERT INTO CRMP.CRIPT_PROMO_MASTER (DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, PROMO_DETAILS, 
+                     PROMO_START, PROMO_END, PROMO_DETAILS_URL, PROMO_TERMS, PROMO_TEMPLATE) VALUES (?, ?, ?, ?, ?, ?,
+                      ?, ?, ?, ?)"""
+
+cursor = session.executemany(insert_qry, data_tup, batch=True)  # batch insert
+
+'''
 # write json to file
 with open('promo_data.json', 'w') as outfile:
     json.dump(promo_master, outfile)
@@ -84,19 +145,30 @@ f = csv.writer(open('promo_extract.csv', 'w+'))
 
 # add header
 f.writerow(['DEVICE'
-               , 'OFFER_BANNER'
-               , 'OFFER_URL'
-               , 'OFFER_CODE'
-               , 'OFFER_DETAILS'
+               , 'PROMO_LOCATION'
+               , 'PROMO_BANNER'
+               , 'PROMO_CODE'
+               , 'PROMO_DETAILS'
+               , 'PROMO_START'
+               , 'PROMO_END'
+               , 'PROMO_DETAILS_URL'
+               , 'PROMO_TERMS'
+               , 'PROMO_TEMPLATE'
             ])
 
 # add content
 for item in data:
     f.writerow([item['device']
-                   , item['offer_banner']
-                   , item['offer_url']
-                   , item['offer_code']
-                   , item['offer_details']]
+                   , item['promo_location']
+                   , item['promo_banner']
+                   , item['promo_code']
+                   , item['promo_details']
+                   , item['promo_start']
+                   , item['promo_end']
+                   , item['promo_url']
+                   , item['promo_terms']
+                   , item['promo_template']]
                )
 
 # file produced at local
+'''
