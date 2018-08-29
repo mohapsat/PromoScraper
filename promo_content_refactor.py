@@ -2,14 +2,15 @@ import requests
 import csv
 import json
 import teradata
+import time
 from bs4 import BeautifulSoup as BS
 
-# doc = "promo_html.html"
-# soup = BS(open(doc), 'html.parser')  # static file
+doc = "promo_html.html"
+soup = BS(open(doc), 'html.parser')  # static file
 
-stage_url = "https://www.stage.shutterfly.com/"
-response = requests.get(stage_url)
-soup = BS(response.text, 'html.parser')
+# stage_url = "https://www.stage.shutterfly.com/"
+# response = requests.get(stage_url)
+# soup = BS(response.text, 'html.parser')
 
 # print(soup.prettify())
 '''
@@ -117,20 +118,64 @@ udaExec = teradata.UdaExec(appName="tdPyInterface", version="1.0",
                            logConsole=False, appConfigFile="tdPyInterface.ini")
 session = udaExec.connect(dsn)
 
-# drop_qry = "delete CRMP.CRIPT_PROMO_MASTER"
-# cursor = session.execute(drop_qry)
+# CRIPT_PROMO_STG
+'''
+CT CRMP.CRIPT_PROMO_STG (DEVICE varchar(32), PROMO_LOCATION varchar(64), PROMO_BANNER integer, 
+PROMO_CODE varchar(128), PROMO_DETAILS varchar(4000), PROMO_START varchar(32), PROMO_END varchar(32), 
+PROMO_DETAILS_URL varchar(1024), PROMO_TERMS varchar(4000), PROMO_TEMPLATE varchar(512), 
+CREATED_DATE date DEFAULT CURRENT_DATE, MODIFIED_DATE date DEFAULT NULL, CREATED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER', 
+MODIFIED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER');
 
-# SAMPLE
-# create table crmp.cript_promo_master (
-# DEVICE varchar(32), PROMO_LOCATION varchar(64), PROMO_BANNER integer, PROMO_CODE varchar(128), PROMO_DETAILS varchar(4000),
-# PROMO_START varchar(32), PROMO_END varchar(32), PROMO_DETAILS_URL varchar(1024), PROMO_TERMS varchar(4000), PROMO_TEMPLATE varchar(512)
-# );
+'''
 
-insert_qry = """INSERT INTO CRMP.CRIPT_PROMO_MASTER (DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, PROMO_DETAILS, 
+del_stg = "delete CRMP.CRIPT_PROMO_STG"
+cursor = session.execute(del_stg)
+
+time.sleep(3)
+
+ins_stg = """INSERT INTO CRMP.CRIPT_PROMO_STG (DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, PROMO_DETAILS, 
                      PROMO_START, PROMO_END, PROMO_DETAILS_URL, PROMO_TERMS, PROMO_TEMPLATE) VALUES (?, ?, ?, ?, ?, ?,
                       ?, ?, ?, ?)"""
 
-cursor = session.executemany(insert_qry, data_tup, batch=True)  # batch insert
+cursor = session.executemany(ins_stg, data_tup, batch=True)  # batch insert
+
+# CRIPT_PROMO_MASTER
+'''
+CT CRMP.CRIPT_PROMO_MASTER (
+ID INTEGER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 NO CYCLE),
+DEVICE varchar(32), PROMO_LOCATION varchar(64), PROMO_BANNER integer, 
+PROMO_CODE varchar(128), PROMO_DETAILS varchar(4000), PROMO_START varchar(32), PROMO_END varchar(32), 
+PROMO_DETAILS_URL varchar(1024), PROMO_TERMS varchar(4000), PROMO_TEMPLATE varchar(512), 
+CREATED_DATE date DEFAULT CURRENT_date, MODIFIED_DATE date, CREATED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER', 
+MODIFIED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER')
+PRIMARY INDEX(PROMO_CODE);
+'''
+
+time.sleep(3)
+
+merge_master = """
+MERGE INTO 
+  CRMP.CRIPT_PROMO_MASTER AS TGT
+USING
+  (SELECT DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, PROMO_DETAILS, PROMO_START, PROMO_END, PROMO_DETAILS_URL, PROMO_TERMS, PROMO_TEMPLATE, CREATED_DATE, MODIFIED_DATE
+  FROM CRMP.CRIPT_PROMO_STG) AS SRC
+ON
+  (TGT.PROMO_CODE = SRC.PROMO_CODE and TGT.CREATED_DATE = SRC.CREATED_DATE)
+WHEN MATCHED THEN 
+  UPDATE SET
+  MODIFIED_DATE = CURRENT_TIMESTAMP
+WHEN NOT MATCHED THEN
+  INSERT
+  (DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, 
+  PROMO_DETAILS, PROMO_START, PROMO_END, PROMO_DETAILS_URL, 
+  PROMO_TERMS, PROMO_TEMPLATE)
+  VALUES
+  (SRC.DEVICE, SRC.PROMO_LOCATION, SRC.PROMO_BANNER, SRC.PROMO_CODE, 
+  SRC.PROMO_DETAILS, SRC.PROMO_START, SRC.PROMO_END, SRC.PROMO_DETAILS_URL, 
+  SRC.PROMO_TERMS, SRC.PROMO_TEMPLATE);
+"""
+
+cursor = session.execute(merge_master)
 
 '''
 # write json to file
