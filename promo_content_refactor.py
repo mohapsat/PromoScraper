@@ -5,12 +5,15 @@ import teradata
 import time
 from bs4 import BeautifulSoup as BS
 
+
 doc = "promo_html.html"
 soup = BS(open(doc), 'html.parser')  # static file
 
-# stage_url = "https://www.stage.shutterfly.com/"
-# response = requests.get(stage_url)
-# soup = BS(response.text, 'html.parser')
+# stage_uri = "https://www.stage.shutterfly.com/"
+prod_uri = "https://www.shutterfly.com/"
+
+response = requests.get(prod_uri)
+soup = BS(response.text, 'html.parser')
 
 # print(soup.prettify())
 '''
@@ -23,7 +26,7 @@ soup = BS(open(doc), 'html.parser')  # static file
 
 promo_master = list()  # master list to store promo json
 
-device_type = ['desktop', 'mobile']  # desktop or mobile banner
+device_type = ['desktop']  # desktop or mobile banner, add 'mobile later
 # chang to device_type
 # fetch available banner ids and load to list
 banner_ids = list()
@@ -78,10 +81,16 @@ for device in device_type:
             # print("offer code: %s" % ofr_code)
 
         for offer_start in soup.find_all('span', attrs={'id': str(device) + "-offer-start-" + str(x + 1)}):
+            # if offer_start.text == '':
+            #     ofr_start = '01-Jan-1900' # default null date to something
+            # else:
             ofr_start = offer_start.text
             # print("offer start: %s" % ofr_start)
 
         for offer_exp in soup.find_all('span', attrs={'id': str(device) + "-offer-expiration-" + str(x + 1)}):
+            # if offer_exp.text == '' or offer_exp.text  None:
+            #     ofr_exp = '31-Dec-9999'
+            # else:
             ofr_exp = offer_exp.text
             # print("offer expiration: %s" % ofr_exp)
 
@@ -105,8 +114,17 @@ for device in device_type:
                      ofr_start, ofr_exp, ofr_url, ofr_terms, ofr_template)
         data.append(data_part)
         data_tup = tuple(data)
-# print(data_tup)
 
+'''
+data_tup = (
+            ('desktop', 'desktop-offer-banner-1', 1, 'SHIP39', 'FREE SHIPPING', '29-SEP-2018', '31-DEC-9999', 'https://www.shutterfly.com/promotions_details/#economy', 'Terms and conditions, really long text', '1'),
+            ('desktop', 'desktop-offer-banner-2', 2, 'no code needed', '50% off Hardcover Photo Books Plus, 30-50% Off Everything Else*', '29-SEP-2018', '02-OCT-2018', 'https://www.shutterfly.com/promotions_details/#economy', 'Terms and conditions, really long text', '2'),
+            ('mobile', 'mobile-offer-banner-1', 1, 'SHIP39', 'Free shipping on $39+', '', '', 'https://www.shutterfly.com/special-offers', '', '')
+            )
+'''
+
+print(data_tup)
+print("parsing completed")
 
 # print(promo_master)
 
@@ -114,21 +132,54 @@ for device in device_type:
 
 # insert_data = data_tup
 dsn = 'TDDB'
+
 udaExec = teradata.UdaExec(appName="tdPyInterface", version="1.0",
                            logConsole=False, appConfigFile="tdPyInterface.ini")
+
 session = udaExec.connect(dsn)
 
 # CRIPT_PROMO_STG
 '''
-CT CRMP.CRIPT_PROMO_STG (DEVICE varchar(32), PROMO_LOCATION varchar(64), PROMO_BANNER integer, 
-PROMO_CODE varchar(128), PROMO_DETAILS varchar(4000), PROMO_START varchar(32), PROMO_END varchar(32), 
-PROMO_DETAILS_URL varchar(1024), PROMO_TERMS varchar(4000), PROMO_TEMPLATE varchar(512), 
-CREATED_DATE date DEFAULT CURRENT_DATE, MODIFIED_DATE date DEFAULT NULL, CREATED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER', 
-MODIFIED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER');
+CT CRMP.CRIPT_PROMO_STG (
+DEVICE varchar(32), 
+PROMO_LOCATION varchar(64), 
+PROMO_BANNER integer, 
+PROMO_CODE varchar(128), 
+PROMO_DETAILS varchar(4000), 
+PROMO_START DATE format 'dd-MMM-YYYY' DEFAULT CURRENT_DATE,
+PROMO_END DATE format 'dd-MMM-YYYY' DEFAULT DATE '9999-01-01',
+PROMO_DETAILS_URL varchar(1024), 
+PROMO_TERMS varchar(4000), 
+PROMO_TEMPLATE varchar(512), 
+CREATED_DATE date DEFAULT CURRENT_DATE, 
+MODIFIED_DATE date DEFAULT NULL, 
+CREATED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER', 
+MODIFIED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER'
+);
+
+CT CRMP.CRIPT_PROMO_STG (
+DEVICE varchar(32), 
+PROMO_LOCATION varchar(64), 
+PROMO_BANNER integer, 
+PROMO_CODE varchar(128), 
+PROMO_DETAILS varchar(4000), 
+PROMO_START VARCHAR(64),
+PROMO_END VARCHAR(64) DEFAULT '9999-01-01',
+PROMO_DETAILS_URL varchar(1024), 
+PROMO_TERMS varchar(4000), 
+PROMO_TEMPLATE varchar(512), 
+CREATED_DATE date DEFAULT CURRENT_DATE, 
+MODIFIED_DATE date DEFAULT NULL, 
+CREATED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER', 
+MODIFIED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER'
+);
 
 '''
 
+print("Deleting CRMP.CRIPT_PROMO_STG")
+
 del_stg = "delete CRMP.CRIPT_PROMO_STG"
+
 cursor = session.execute(del_stg)
 
 time.sleep(3)
@@ -141,17 +192,38 @@ cursor = session.executemany(ins_stg, data_tup, batch=True)  # batch insert
 
 # CRIPT_PROMO_MASTER
 '''
-CT CRMP.CRIPT_PROMO_MASTER (
-ID INTEGER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 NO CYCLE),
-DEVICE varchar(32), PROMO_LOCATION varchar(64), PROMO_BANNER integer, 
-PROMO_CODE varchar(128), PROMO_DETAILS varchar(4000), PROMO_START varchar(32), PROMO_END varchar(32), 
-PROMO_DETAILS_URL varchar(1024), PROMO_TERMS varchar(4000), PROMO_TEMPLATE varchar(512), 
-CREATED_DATE date DEFAULT CURRENT_date, MODIFIED_DATE date, CREATED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER', 
-MODIFIED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER')
-PRIMARY INDEX(PROMO_CODE);
+CREATE SET TABLE CRMP.CRIPT_PROMO_MASTER ,NO FALLBACK ,
+     NO BEFORE JOURNAL,
+     NO AFTER JOURNAL,
+     CHECKSUM = DEFAULT,
+     DEFAULT MERGEBLOCKRATIO
+     (
+      ID INTEGER GENERATED ALWAYS AS IDENTITY
+           (START WITH 1 
+            INCREMENT BY 1 
+            MINVALUE 1 
+            MAXVALUE 2147483647 
+            NO CYCLE),
+      DEVICE VARCHAR(32) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_LOCATION VARCHAR(64) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_BANNER INTEGER,
+      PROMO_CODE VARCHAR(128) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_DETAILS VARCHAR(4000) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_START VARCHAR(32) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_END VARCHAR(32) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_DETAILS_URL VARCHAR(1024) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_TERMS VARCHAR(4000) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_TEMPLATE VARCHAR(512) CHARACTER SET LATIN NOT CASESPECIFIC,
+      CREATED_DATE DATE FORMAT 'YY/MM/DD' DEFAULT DATE ,
+      MODIFIED_DATE DATE FORMAT 'YY/MM/DD',
+      CREATED_BY VARCHAR(64) CHARACTER SET LATIN NOT CASESPECIFIC DEFAULT 'CRIPT_SCRAPER',
+      MODIFIED_BY VARCHAR(64) CHARACTER SET LATIN NOT CASESPECIFIC DEFAULT 'CRIPT_SCRAPER')
+PRIMARY INDEX ( PROMO_CODE );
 '''
 
 time.sleep(3)
+
+print("Merging into CRMP.CRIPT_PROMO_MASTER ")
 
 merge_master = """
 MERGE INTO 
@@ -160,7 +232,11 @@ USING
   (SELECT DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, PROMO_DETAILS, PROMO_START, PROMO_END, PROMO_DETAILS_URL, PROMO_TERMS, PROMO_TEMPLATE, CREATED_DATE, MODIFIED_DATE
   FROM CRMP.CRIPT_PROMO_STG) AS SRC
 ON
-  (TGT.PROMO_CODE = SRC.PROMO_CODE and TGT.CREATED_DATE = SRC.CREATED_DATE)
+    ( 
+        TGT.PROMO_CODE = SRC.PROMO_CODE 
+        and  TGT.CREATED_DATE = SRC.CREATED_DATE
+        and  TGT.DEVICE = SRC.DEVICE
+    )
 WHEN MATCHED THEN 
   UPDATE SET
   MODIFIED_DATE = CURRENT_TIMESTAMP
@@ -176,6 +252,8 @@ WHEN NOT MATCHED THEN
 """
 
 cursor = session.execute(merge_master)
+
+print("Merge into  CRMP.CRIPT_PROMO_MASTER complete.")
 
 '''
 # write json to file
