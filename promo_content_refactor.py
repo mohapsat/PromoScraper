@@ -5,9 +5,8 @@ import teradata
 import time
 from bs4 import BeautifulSoup as BS
 
-
-doc = "promo_html.html"
-soup = BS(open(doc), 'html.parser')  # static file
+# doc = "promo_html.html"
+# soup = BS(open(doc), 'html.parser')  # static file
 
 # stage_uri = "https://www.stage.shutterfly.com/"
 prod_uri = "https://www.shutterfly.com/"
@@ -44,6 +43,7 @@ for device in device_type:
     ofr_code = ''
     ofr_details = ''
     ofr_url = ''
+    ofr_promoid = ''
 
     for tag in soup.find_all(class_=str(device) + '-offer-banner'):
         # print("id = %s" % tag.get('id'))
@@ -105,13 +105,19 @@ for device in device_type:
 
             # print("---------------------\n")
 
+        for offer_template in soup.find_all('span', attrs={'id': str(device) + "-offer-promoid-" + str(x + 1)}):
+            ofr_promoid = offer_template.text
+
         # promo_json = {"device": device, "promo_location": item, "promo_banner": ofr_banner, "promo_code": ofr_code,
         #               "promo_details": ofr_details, "promo_start": ofr_start, "promo_end": ofr_exp, "promo_url": ofr_url,
         #               "promo_terms": ofr_terms, "promo_template": ofr_template}
         # promo_master.append(promo_json)
 
-        data_part = (device, item, ofr_banner, ofr_code, ofr_details,
-                     ofr_start, ofr_exp, ofr_url, ofr_terms, ofr_template)
+        # data_part = (device, item, ofr_banner, ofr_code, ofr_details,
+        # ofr_start, ofr_exp, ofr_url, ofr_terms, ofr_template)
+
+        data_part = (ofr_code, ofr_promoid, ofr_start, ofr_exp)
+
         data.append(data_part)
         data_tup = tuple(data)
 
@@ -140,6 +146,8 @@ session = udaExec.connect(dsn)
 
 # CRIPT_PROMO_STG
 '''
+--OLD--
+
 CT CRMP.CRIPT_PROMO_STG (
 DEVICE varchar(32), 
 PROMO_LOCATION varchar(64), 
@@ -157,17 +165,21 @@ CREATED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER',
 MODIFIED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER'
 );
 
+
+--NEW--
 CT CRMP.CRIPT_PROMO_STG (
-DEVICE varchar(32), 
-PROMO_LOCATION varchar(64), 
-PROMO_BANNER integer, 
+--DEVICE varchar(32), 
+--PROMO_LOCATION varchar(64), 
+--PROMO_BANNER integer, 
 PROMO_CODE varchar(128), 
-PROMO_DETAILS varchar(4000), 
+PROMO_ID varchar(512) DEFAULT '40ALL_DEFAULT', 
+--PROMO_DETAILS varchar(4000), 
 PROMO_START VARCHAR(64),
 PROMO_END VARCHAR(64) DEFAULT '9999-01-01',
-PROMO_DETAILS_URL varchar(1024), 
-PROMO_TERMS varchar(4000), 
-PROMO_TEMPLATE varchar(512), 
+--PROMO_DETAILS_URL varchar(1024), 
+--PROMO_TERMS varchar(4000), 
+--PROMO_TEMPLATE varchar(512),
+
 CREATED_DATE date DEFAULT CURRENT_DATE, 
 MODIFIED_DATE date DEFAULT NULL, 
 CREATED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER', 
@@ -176,22 +188,28 @@ MODIFIED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER'
 
 '''
 
-print("Deleting CRMP.CRIPT_PROMO_STG")
-
+# print("Deleting CRMP.CRIPT_PROMO_STG")
+#
 del_stg = "delete CRMP.CRIPT_PROMO_STG"
 
 cursor = session.execute(del_stg)
 
 time.sleep(3)
 
-ins_stg = """INSERT INTO CRMP.CRIPT_PROMO_STG (DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, PROMO_DETAILS, 
-                     PROMO_START, PROMO_END, PROMO_DETAILS_URL, PROMO_TERMS, PROMO_TEMPLATE) VALUES (?, ?, ?, ?, ?, ?,
-                      ?, ?, ?, ?)"""
+# ins_stg = """INSERT INTO CRMP.CRIPT_PROMO_STG (DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, PROMO_DETAILS,
+#                      PROMO_START, PROMO_END, PROMO_DETAILS_URL, PROMO_TERMS, PROMO_TEMPLATE) VALUES (?, ?, ?, ?, ?, ?,
+#                       ?, ?, ?, ?)"""
+
+
+ins_stg = """INSERT INTO CRMP.CRIPT_PROMO_STG (PROMO_CODE, PROMO_ID, PROMO_START, PROMO_END) VALUES (?, ?, ?, ?)"""
+
 
 cursor = session.executemany(ins_stg, data_tup, batch=True)  # batch insert
 
 # CRIPT_PROMO_MASTER
 '''
+--OLD---
+
 CREATE SET TABLE CRMP.CRIPT_PROMO_MASTER ,NO FALLBACK ,
      NO BEFORE JOURNAL,
      NO AFTER JOURNAL,
@@ -219,36 +237,65 @@ CREATE SET TABLE CRMP.CRIPT_PROMO_MASTER ,NO FALLBACK ,
       CREATED_BY VARCHAR(64) CHARACTER SET LATIN NOT CASESPECIFIC DEFAULT 'CRIPT_SCRAPER',
       MODIFIED_BY VARCHAR(64) CHARACTER SET LATIN NOT CASESPECIFIC DEFAULT 'CRIPT_SCRAPER')
 PRIMARY INDEX ( PROMO_CODE );
+
+--NEW---
+
+CREATE SET TABLE CRMP.CRIPT_PROMO_MASTER ,NO FALLBACK ,
+     NO BEFORE JOURNAL,
+     NO AFTER JOURNAL,
+     CHECKSUM = DEFAULT,
+     DEFAULT MERGEBLOCKRATIO
+     (
+      ID INTEGER GENERATED ALWAYS AS IDENTITY
+           (START WITH 1 
+            INCREMENT BY 1 
+            MINVALUE 1 
+            MAXVALUE 2147483647 
+            NO CYCLE),
+--      DEVICE VARCHAR(32) CHARACTER SET LATIN NOT CASESPECIFIC,
+--      PROMO_LOCATION VARCHAR(64) CHARACTER SET LATIN NOT CASESPECIFIC,
+--      PROMO_BANNER INTEGER,
+      PROMO_CODE VARCHAR(128) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_ID VARCHAR(128) CHARACTER SET LATIN NOT CASESPECIFIC,
+--      PROMO_DETAILS VARCHAR(4000) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_START VARCHAR(32) CHARACTER SET LATIN NOT CASESPECIFIC,
+      PROMO_END VARCHAR(32) CHARACTER SET LATIN NOT CASESPECIFIC,
+--      PROMO_DETAILS_URL VARCHAR(1024) CHARACTER SET LATIN NOT CASESPECIFIC,
+--      PROMO_TERMS VARCHAR(4000) CHARACTER SET LATIN NOT CASESPECIFIC,
+--      PROMO_TEMPLATE VARCHAR(512) CHARACTER SET LATIN NOT CASESPECIFIC,
+      CREATED_DATE DATE FORMAT 'YY/MM/DD' DEFAULT DATE ,
+      MODIFIED_DATE DATE FORMAT 'YY/MM/DD',
+      CREATED_BY VARCHAR(64) CHARACTER SET LATIN NOT CASESPECIFIC DEFAULT 'CRIPT_SCRAPER',
+      MODIFIED_BY VARCHAR(64) CHARACTER SET LATIN NOT CASESPECIFIC DEFAULT 'CRIPT_SCRAPER')
+PRIMARY INDEX ( PROMO_ID );
+
 '''
 
 time.sleep(3)
 
 print("Merging into CRMP.CRIPT_PROMO_MASTER ")
 
-merge_master = """
+merge_master = """  
+
 MERGE INTO 
   CRMP.CRIPT_PROMO_MASTER AS TGT
 USING
-  (SELECT DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, PROMO_DETAILS, PROMO_START, PROMO_END, PROMO_DETAILS_URL, PROMO_TERMS, PROMO_TEMPLATE, CREATED_DATE, MODIFIED_DATE
-  FROM CRMP.CRIPT_PROMO_STG) AS SRC
+  (SELECT PROMO_CODE, PROMO_ID, PROMO_START, PROMO_END, CREATED_DATE FROM CRMP.CRIPT_PROMO_STG) AS SRC
 ON
     ( 
-        TGT.PROMO_CODE = SRC.PROMO_CODE 
+        TGT.PROMO_CODE = SRC.PROMO_CODE
+        and TGT.PROMO_ID = SRC.PROMO_ID
         and  TGT.CREATED_DATE = SRC.CREATED_DATE
-        and  TGT.DEVICE = SRC.DEVICE
     )
 WHEN MATCHED THEN 
   UPDATE SET
   MODIFIED_DATE = CURRENT_TIMESTAMP
 WHEN NOT MATCHED THEN
   INSERT
-  (DEVICE, PROMO_LOCATION, PROMO_BANNER, PROMO_CODE, 
-  PROMO_DETAILS, PROMO_START, PROMO_END, PROMO_DETAILS_URL, 
-  PROMO_TERMS, PROMO_TEMPLATE)
+  (PROMO_CODE, PROMO_ID, PROMO_START, PROMO_END)
   VALUES
-  (SRC.DEVICE, SRC.PROMO_LOCATION, SRC.PROMO_BANNER, SRC.PROMO_CODE, 
-  SRC.PROMO_DETAILS, SRC.PROMO_START, SRC.PROMO_END, SRC.PROMO_DETAILS_URL, 
-  SRC.PROMO_TERMS, SRC.PROMO_TEMPLATE);
+  (SRC.PROMO_CODE, SRC.PROMO_ID, SRC.PROMO_START, SRC.PROMO_END);
+  
 """
 
 cursor = session.execute(merge_master)
