@@ -4,6 +4,7 @@ import json
 import teradata
 import time
 from bs4 import BeautifulSoup as BS
+import os
 
 # doc = "promo_html.html"
 # soup = BS(open(doc), 'html.parser')  # static file
@@ -139,8 +140,10 @@ print("parsing completed")
 # insert_data = data_tup
 dsn = 'TDDB'
 
+APP_CONFIG_FILE = os.getcwd() + "/tdPyInterface.ini"
+
 udaExec = teradata.UdaExec(appName="tdPyInterface", version="1.0",
-                           logConsole=False, appConfigFile="tdPyInterface.ini")
+                           logConsole=False, appConfigFile=APP_CONFIG_FILE)
 
 session = udaExec.connect(dsn)
 
