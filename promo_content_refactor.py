@@ -209,6 +209,8 @@ ins_stg = """INSERT INTO CRMP.CRIPT_PROMO_STG (PROMO_CODE, PROMO_ID, PROMO_START
 
 cursor = session.executemany(ins_stg, data_tup, batch=True)  # batch insert
 
+print("stage inserted")
+
 # CRIPT_PROMO_MASTER
 '''
 --OLD---
@@ -274,9 +276,9 @@ PRIMARY INDEX ( PROMO_ID );
 
 '''
 
-time.sleep(3)
+# time.sleep(3)
 
-print("Merging into CRMP.CRIPT_PROMO_MASTER ")
+# print("Merging into CRMP.CRIPT_PROMO_MASTER ")
 
 merge_master = """  
 
@@ -301,9 +303,9 @@ WHEN NOT MATCHED THEN
   
 """
 
-cursor = session.execute(merge_master)
+# cursor = session.execute(merge_master)
 
-print("Merge into  CRMP.CRIPT_PROMO_MASTER complete.")
+#print("Merge into  CRMP.CRIPT_PROMO_MASTER complete.")
 
 '''
 # write json to file
