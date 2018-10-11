@@ -122,6 +122,12 @@ for device in device_type:
         data.append(data_part)
         data_tup = tuple(data)
 
+    # 10/11/18 - Remove 1st element from the tup (left eyebrow promo)
+    l = list(data_tup)  # tup is immutable, convert to list
+    l.pop(0)  # remove 1st element
+    data_tup = tuple(l)  # convert back to tup
+    # print(data_tup)  # for qa
+
 '''
 data_tup = (
             ('desktop', 'desktop-offer-banner-1', 1, 'SHIP39', 'FREE SHIPPING', '29-SEP-2018', '31-DEC-9999', 'https://www.shutterfly.com/promotions_details/#economy', 'Terms and conditions, really long text', '1'),
