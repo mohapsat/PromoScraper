@@ -202,6 +202,7 @@ MODIFIED_BY VARCHAR(64) DEFAULT 'CRIPT_SCRAPER'
 del_stg = "delete CRMP.CRIPT_PROMO_STG"
 
 cursor = session.execute(del_stg)
+# print ("cursor_stg = %s" % cursor.error)
 
 time.sleep(3)
 
